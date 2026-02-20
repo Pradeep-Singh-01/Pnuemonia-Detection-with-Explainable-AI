@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+tensorflow ==2.15.0
+r43
+pillow
+jinja2
+python-multipart
+matplotlib
+kagglehub
+scikit-learn
+
+
