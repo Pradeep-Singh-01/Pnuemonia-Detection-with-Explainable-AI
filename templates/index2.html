@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>X-Ray Pneumonia Detector</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: #333; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 100%; max-width: 500px; text-align: center; }
+        h1 { color: #007bff; margin-bottom: 20px; font-size: 1.8em; }
+        #file-upload { display: block; width: 100%; padding: 10px; margin-bottom: 20px; border: 2px dashed #ccc; border-radius: 8px; cursor: pointer; text-align: center; }
+        #predict-button { background-color: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 1em; transition: background-color 0.3s; width: 100%; }
+        #result-container { margin-top: 25px; padding: 15px; border-radius: 8px; background-color: #e9ecef; text-align: left; min-height: 50px; }
+        .normal { color: #28a745; font-weight: bold; }
+        .pneumonia { color: #dc3545; font-weight: bold; }
+        .loading { color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Chest X-Ray Analyzer</h1>
+        <p>Upload a Chest X-Ray image to get a diagnosis.</p>
+
+        <input type="file" id="file-input" accept="image/*" style="display: none;">
+        <label for="file-input" id="file-upload">Click here to select an X-Ray image
+            <span id="file-name" style="display: block; font-weight: bold; margin-top: 5px;"></span>
+        </label>
+        
+        <button id="predict-button" disabled>Analyze X-Ray</button>
+
+        <div id="result-container">
+            <p id="status-message" class="loading">Waiting for image upload...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = 'http://127.0.0.1:8800/PREDICTION';
+        const fileInput = document.getElementById('file-input');
+        const predictButton = document.getElementById('predict-button');
+        const statusMessage = document.getElementById('status-message');
+        const fileNameSpan = document.getElementById('file-name');
+
+        let selectedFile = null;
+
+        fileInput.addEventListener('change', (event) => {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                fileNameSpan.textContent = `Selected: ${selectedFile.name}`;
+                predictButton.disabled = false;
+                statusMessage.innerHTML = 'Ready to analyze.';
+            }
+        });
+
+        predictButton.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            statusMessage.className = 'loading';
+            statusMessage.innerHTML = '🩺 **Analyzing...** Please wait.';
+            predictButton.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile); 
+
+            try {
+                const response = await fetch(API_ENDPOINT, { method: 'POST', body: formData });
+                if (!response.ok) throw new Error(`HTTP Error! Status: ${response.status}`);
+                const result = await response.json();
+                displayResult(result); 
+            } catch (error) {
+                statusMessage.className = 'pneumonia';
+                statusMessage.innerHTML = `❌ **ERROR:** Failed. ${error.message}`;
+            } finally {
+                predictButton.disabled = false;
+            }
+        });
+
+        function displayResult(data) {
+            const diagnosis = data.Diagnosis;
+            const score = (data.Confidance_Score_PNEUMONIA * 100).toFixed(2);
+            const resultClass = (diagnosis === "PNEUMONIA") ? 'pneumonia' : 'normal';
+
+            statusMessage.innerHTML = `
+                <div>Diagnosis: <span class="${resultClass}">${diagnosis}</span></div>
+                <div>Confidence Score (Pneumonia): <span>${score}%</span></div>
+                <div style="font-size:0.8em; margin-top:10px; color:#6c757d;">Threshold: ${data.THRESHOLD}</div>
+            `;
+            statusMessage.className = '';
+        }
+    </script>
+</body>
+</html>
